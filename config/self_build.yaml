@@ -1,0 +1,65 @@
+#don't touch if you're not extending/modifying ShrubRoots!
+---
+#necessary to tell parser we're dealing with a ShrubRoots file
+version: 0.995
+
+#Container Reference
+container_ref:
+    Roots_Container: Roots_ObjectDemapper
+
+#first sequence
+prebuild:
+    demappers
+
+#default sequence
+sequence:
+    variables
+    objects
+
+#
+#begin building information
+#
+
+#...makes demappers, not surprisingly
+demappers:
+    variables=Roots_VariableDemapper: 
+        Roots_YAMLSpycExtractor
+    objects=Roots_ObjectDemapper:
+        Roots_VariableDemapper
+
+#defines variables
+#if you change the 'dep_map' or 'classmap' keys you MUST 
+#change the object builder to accept these changes!
+variables:
+    classmap:
+        type: parsable_file
+        value: classmap.yaml
+    dependency_map:
+        type: parsable_file
+        value: dependency.yaml
+    clone_list:
+        type: parsable_file
+        value: clone.yaml
+    maps:
+        type: array
+        value: 
+            classmap: classmap
+            dep_map: dependency_map
+            dep_map_name: 
+                type: string
+                value: dep_map
+
+#defines objects - you can change the demapper array part IF you know
+#                  what you're doing, i.e. you have multiple object/variable
+#                  sequences
+objects:        
+    Roots_Container:
+        Roots_ObjectBuilder:
+            maps
+            demapper_array:
+                variables=Roots_VariableDemapper
+                objects=Roots_ObjectDemapper: 
+                    Roots_VariableDemapper
+                    clone_list
+                factories=Roots_FactoryDemapper: 
+                    Roots_ObjectDemapper
