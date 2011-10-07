@@ -1,0 +1,16 @@
+<phpunit>
+  <testsuites>
+    <testsuite name="ShrubRoots">
+      <file>c:\php\ShrubRoots\tests\Roots_ContainerTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_FactoryDemapperTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_ObjectBuilderTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_ObjectDemapperTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_SetupTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_VariableDemapperTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Roots_YAMLSpycExtractorTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Shrub_ConfigMethodsTest.php</file>
+      <file>c:\php\ShrubRoots\tests\Shrub_ConfigTest.php</file>
+    </testsuite>
+  </testsuites>
+</phpunit>
+    

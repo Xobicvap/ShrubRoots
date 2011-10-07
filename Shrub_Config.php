@@ -58,7 +58,7 @@ class Shrub_Config implements Shrub_IConfig
         /* obtain current working directory and add the $config_folder
          * address to it, then get the ini file location */
         $this->config_path = $basepath.DIRECTORY_SEPARATOR.
-                             $config_folder.DIRECTORY_SEPARATOR;
+                             $config_folder;
         $this->ini_file = $this->config_path.DIRECTORY_SEPARATOR.$inifile;
         
         // fail if file does not exist or is not readable

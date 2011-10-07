@@ -119,12 +119,17 @@ class Roots_VariableDemapper implements Roots_IDemappable, Roots_IObtaining
             }
 
             if ($type == 'include_file') {
-                require $value;
+                $included = get_included_files();
+                if (!in_array($value, $included)) {
+                    if (!in_array(ucfirst($value), $included)) {
+                        require $value;
+                    }
+                }
                 return array($name => 'included');
             }
 
             if ($type == 'file_handle') {
-                $fp = fopen($value, "r");
+                $fp = fopen($value, "rb");
                 if (!$fp) {
                     throw new Exception("Could not open file $value.");
                 }

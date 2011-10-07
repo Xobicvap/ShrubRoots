@@ -426,9 +426,12 @@ class Roots_ObjectDemapper implements Roots_IDemappable,
      * Returns true if the the object referred to by key $obj_name in the
      * source pool is exactly equal to object $object. */
     protected function checkSourcePoolEmpty($obj_name) {
-        $nullcheck = $this->source_pool[$obj_name] === null;
-        $setcheck = !isset($this->source_pool[$obj_name]);
-        return $nullcheck & $setcheck;
+        if (array_key_exists($obj_name, $this->source_pool)) {
+            $nullcheck = $this->source_pool[$obj_name] === null;
+            $setcheck = !isset($this->source_pool[$obj_name]);
+            return $nullcheck & $setcheck;
+        }
+        else return true;
     }
     
     /** \brief Sets an entry in the source pool.

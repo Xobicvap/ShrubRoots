@@ -48,9 +48,9 @@ class Roots_Container implements Roots_IContaining
      * object builder. */
     protected function loadObjects() {
         if (!isset($this->objects)) {
-            $this->obj_builder->toggle_autoload('on');
+            $this->obj_builder->toggleAutoload('on');
             $this->objects = $this->obj_builder->buildObjects();
-            $this->obj_builder->toggle_autoload('off');
+            $this->obj_builder->toggleAutoload('off');
         }
     }
     

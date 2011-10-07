@@ -1,0 +1,173 @@
+All code contained herein save for spyc.php is (C) 2011 Rusty Hamilton (rusty@shrub3.net).
+
+ShrubRoots is a dependency injection container with a few interesting features that aren't necessarily found in other containers. It is currently in beta, i.e. all the unit tests pass with flying colors but it hasn't been field-tested yet by average users. That's where you come in. And I don't know if the Bootstrap object works yet because that one, sadly, I haven't tested. 
+
+A manual and a Doxygen-generated API reference are in the works, as is XML (and possibly JSON) support. For right now, here's an ultra-short tutorial of sorts:
+
+What ShrubRoots Does:
+If given a dependency mapping file, ShrubRoots will build everything in it then store it in an APC cache so it doesn't have to be built again for a while. In addition to the APC cache, your objects/variables/what have you are stored in a bytecode file as well. (If you're changing the code of your application regularly, you can turn off caching/bytecode storage.)
+
+What You Shouldn't (Or Can't) Use ShrubRoots For:
+Most frameworks have their own dependency injection solutions/containers etc. implemented internally, and you'd have to do a significant amount of mucking around in their internals to use ShrubRoots with them. Their solutions are most likely optimized for their needs, as well. Bottom line: ShrubRoots doesn't work well (or at all) with web application frameworks like Symfony, CodeIgniter, CakePHP, and so forth. For smaller projects, or even larger ones provided they don't do a lot of lazy loading etc., ShrubRoots works just fine.
+
+ShrubRoots works ONLY for object-oriented code. If your code base is largely or entirely procedural, you won't get any benefit out of using ShrubRoots.
+
+How ShrubRoots Works (i.e. the part you're really looking for):
+First, you need a dependency mapping file, then you need to create a classmap (don't worry, there's a tool for that) that will tell ShrubRoots where to find your source files. Next, you need to tell ShrubRoots where to find your classmap and dependency mapping files. Finally, in your application's bootstrap script, instantiate the Roots_Bootstrap object and run its cacheCheck method. The cacheCheck method will return the ShrubRoots container, from which you can get whatever objects you built earlier and/or request a factory object to make an object for you. We'll discuss all of these steps in detail below.
+
+Oh, and as you may have gathered from the above information at some point, you need to have APC installed as a PHP extension, if you don't have it already. See (info) for details on that.
+
+
+Step 1: Create a dependency mapping file.
+By default, ShrubRoots understands three types of dependency mappings, though it's been designed such that you can easily make your own demapper object to read your own dependency mapping type. 
+
+What's a dependency mapping? It's pretty self-explanatory, really. It's a list that details what depends on what. There's not enough space for a full tutorial on dependency injection, but do a Google search if you're not familiar with it. (ShrubRoots uses exclusively constructor-based injection, just so you know.)
+
+Here's the types of dependency mapping ShrubRoots understands:
+
+TYPES
+Variables
+The first type of dependency mapping ShrubRoots understands is the Variables type. To be completely exact, what I call "variables" here are *technically* variables but are constants in practice; they're accessible only via the container, and only in a read-only manner. Real dyed-in-the-wool PHP constants are global. I don't like globals, even global constants, and only use the latter when I have to (and yes, I did use them in a few places in ShrubRoots) and you shouldn't either. 
+
+ShrubRoots supports the int, string, and float primitive types, has support for arrays, and also handles several different types of files: text files (loaded into a string via file_get_contents), include files (in case you're building objects that use a custom bootstrap/class loader script), file handles (if you need low-level access), and parseable files. The latter we'll explain later.
+
+To set up a variable mapping, you do it in the manner described below. All variable types are exemplified:
+
+version: 1.001
+variables:
+    number:
+        type: int
+        value: 5
+    quote:
+        type: string
+        value: i'm a string
+    pi:
+        type: float
+        value: 3.14
+    large_string:
+        type: text_file
+        value: /path/to/yay.txt
+    img:
+        type: file_handle
+        value: /path/to/1.jpg
+    other_project_bootstrap:
+        type: include_file
+        value: /path/to/thirdparty.php
+    important_yamlfile:
+        type: parseable_file
+        value: /path/to/stuff.yaml
+    collection:
+        type: array
+        value:
+            stringvar: large_string
+            yamlfile: important_yamlfile
+            pi_plusone:
+                type: float
+                value: 4.14
+
+So, from the above we can see the following: each variable has a key (e.g. 'number', 'quote', 'pi', etc.) and a type/value pair. The ONLY place where an key does not need to be linked with a type/value pair is within an array declaration where you are referencing an already-defined variable (example: the 'stringvar' and 'yamlfile' keys). In any other case, not including a type AND a value will give you an error.
+
+The 'parseable_file' type we mentioned above is a YAML file whose contents are parsed into an array by our wonderful friend Spyc. Eventually ShrubRoots will support XML/JSON/what have you, but not now.
+
+It should also be mentioned that Spyc is additionally wonderful in that you can indeed parse strings that contain double and single quotes without having to do any escaping magic. For instance, the 'quote' variable above could be listed as "i'm a string" and Spyc will include the quotes. See how magical Spyc is?
+
+We'll discuss the 'version' key listed above at a later point. Just remember that it's there, for now.
+
+Your application can retrieve any of these values at any point by using the container's retrieveItem($obj_name) method, where $obj_name equals the key of the variable you want.
+
+
+Objects
+
+The next mapping type is the objects type. This is where you can actually specify how to build your application. To use a completely facetious and useless example, since I can't come up with a better one, let's say your application's main object is the Foo object, which requires a Bar object and a Baz object passed into its constructor. We'll say that the Bar object requires an array containing a string, a parsed file, and a float value, and the Baz object requires an array of two Baf objects. The Baf object does not require any constructor parameters.
+
+How would we map such a complex situation? We'd do it like so:
+
+objects:
+    Foo:
+        Bar: collection
+        Baz: 
+            Baf_array:
+                Baf
+                Baf
+                
+And in a separate file (we'll show where this file goes, and how to find it, very soon), we write the following:
+
+clone_list:
+    Baf_array: Baf
+    
+The mapping headed by the 'objects' key tells ShrubRoots how to build everything. We could read the mapping as "The Foo object's first constructor parameter is an instance of the Bar object, whose constructor parameter is the collection variable already specified in the variables mapping. The Foo object's next constructor parameter is the Baz object, whose constructor parameter is an array of two Baf objects." Hopefully this makes sense?
+
+The clone list part is pretty simple; it's a file that tells ShrubRoots that if it has to create the Baf_array object (which is an array, not an object, but we'll get to that), it should clone the Baf object after instantiating it once. You'd need your Baf object to implement the clone() method, of course.
+
+As you've probably already gathered, it's perfectly okay to pass variables you defined in the variables mapping into objects, as we did above with the 'collection' array. And, as we mentioned, the Baf_array object isn't an object at all; the _array suffix tells ShrubRoots that it's actually supposed to make an array of objects.
+
+Another cool thing you can do here is name your objects. You retrieve objects just the same as you do variables, i.e. by passing the key of the object to the container's retrieveItem method. However, the key does not have to have anything at all to do with the object. 
+
+"Wait!" you say. "My Baz object needs the Baf array to be keyed to 'bobjects', not 'Baf_array'! Does that mean I can rename it 'bobjects'?" Yes it does, my friend. You do that like so:
+
+objects:
+    Foo:
+        Bar: collection
+        Baz: 
+            bobjects=Baf_array:
+                Baf
+                Baf
+                
+See how easy that was? Prefix your actual object name with '(your object name)=' WITH NO SPACE BETWEEN YOUR OBJECT NAME, THE EQUALS SIGN, AND THE ACTUAL OBJECT NAME, and you've got your very own object key.
+
+
+Factories
+Okay, now we get into the most complicated type of dependency mapping: factories. 
+
+It's considered good OO design to reduce coupling as much as possible. ShrubRoots tries to further that goal, not just through dependency injection, but also through the use of the abstract factory pattern. In essence, ShrubRoots ties factories to the objects they make, and these factories are contained within the ShrubRoots container. Any object you write that needs a factory object should be injected with a reference to the container object. Once you do so, you call the container's retrieveFactoryBuiltObject method, passing the type of object you need (and, optionally any parameters your factory may need as an array) to the method, and the container does all the work of finding and using the correct factory object.
+
+How we set this up is as follows:
+
+factories:
+    assignments:
+        Foo: FooFactory
+        Bar: BarFactory
+    builds:
+        FooFactory
+        BarFactory:
+            ObjectDemapper
+            Container
+    sequence:
+        BarFactory
+        FooFactory
+        
+It's not quite as strange as it seems. The 'assignments' map shows which objects are linked to which factories, rather obviously. For instance, if an object in your application needs to generate a Foo object, and said object has a reference to the container, it can call the container's retrieveFactoryBuiltObject method and request an object of class Foo. The container will use the FooFactory to build this object.
+
+The syntax of the builds section may look a little familiar- and that's because it's put together the same way as any other object ShrubRoots builds, by using ShrubRoots' internal ObjectDemapper class. You may notice, though, that the BarFactory contains two interesting-looking objects. The ObjectDemapper class in ShrubRoots contains references to itself and to the Container, and can inject these references into any object that needs them. 
+
+This is useful because your factories can use these internal ShrubRoots classes to build just about anything you can think of- and that's just DURING runtime. If you have your factories implement the buildPremapped method in the (included) Roots_ICompileObjs interface, you can do something really cool. While ShrubRoots is building your application, it checks any factories you've requested it to build for the buildPremapped method. If it finds any, it calls that method... which can be used to build any number of factory objects AT runtime (not during), before your application even begins.
+
+Why would you want this? Well, consider a situation like this: You're building a (micro, hopefully) MVC framework. One way to do that is to have a FrontController class that uses the Command pattern to handle user input. For example, a login could be represented by a LoginCommand object. Input requesting the latest news items could be represented by a GetRecentNewsCommand object. You get the picture.
+
+Frameworks that do this generally lazy load all their Command objects so they only have to deal with the performance cost of loading one when it is needed. But what if ALL the Command objects the application would need were generated before the application even began, then cached? Would this increase performance?
+
+I honestly don't know! I assume it would in the long run, but I'd be interested to find out for sure!
+
+To do this, inject the factories you want to use with mappings that tell them how to build all the objects they'll need to build. Our Command objects, for instance, would probably need a reference to some sort of Model object, and each Model object will probably need some other stuff too. There are a number of ways you could handle this sort of situation, but ShrubRoots also allows you to direct the order in which your factories build objects at runtime. This is the 'sequence' list we saw way back in the factories mapping. 
+
+If you've read this far, congratulations, you just survived the most difficult part of using ShrubRoots. Once you get your mapping syntax down, the rest is easy, as we're about to see.
+
+
+Step 2: Make your classmap
+The demappers ShrubRoots uses internally are pretty powerful, but they don't know everything- in particular, they don't know where your source files are for the objects you want to build. There's a solution for that, though, and it's really easy.
+
+In your base ShrubRoots directory, you'll find a file entitled 'classdump.php'. Run this file with a space-separated list of directories you want it to search for your source files (it searches recursively, so you don't need to worry about that). You'll get a YAML file mapping each class found with its source file. ShrubRoots will use this to find your code.
+
+
+Step 3: Telling ShrubRoots where your files are
+So you have your dependency mapping all set up, and you have a classmap file that'll tell ShrubRoots where to go to build your dependency mapping. Now all we need to do is tell ShrubRoots where these files are. In ShrubRoots' config directory, open up the 'self_build.yaml' file in a text editor. Find the lines that say 'dependency_map' and 'classmap', and change them to suit your files. You MUST use absolute paths.
+
+
+Step 4: Get everything up and running
+In your application's bootstrap script (make one if you don't have one), instantiate the Roots_Bootstrap class, passing the path to whatever folder/directory you want to store your bytecode file in (/bin is a good name) into the constructor. Once you have an instance of Roots_Bootstrap, call that object's cacheCheck method (there are no parameters to it). The return value of this method is a ShrubRoots Container object, containing all the objects you specified to be built. 
+
+Call the container object's retrieveItem method, passing it the name of the object you want- most likely whatever the main object is for your application. Call that object's initial method, and you're set.
+
+The next time your bootstrap script loads, it will run the Roots_Bootstrap's cacheCheck method again- but in this case all it will do is pull your container (which of course contains your entire application) from the APC cache. No loading, no instantiating anything, just a straight transfer from the cache to your script. Easy stuff.
+
+As I stated earlier, a full tutorial and a Doxygen-generated API manual is in the works. For now, enjoy!

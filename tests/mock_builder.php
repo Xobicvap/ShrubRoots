@@ -32,5 +32,10 @@ class Mock_Builder implements Roots_IBuilding {
     public function buildFromFactory(array &$fact_list, $obj_name) {
         return null;
     }
+    
+    public function toggleAutoload($toggle) {
+        return null;
+    }
+    
 }
 ?>
