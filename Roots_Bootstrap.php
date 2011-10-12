@@ -20,17 +20,10 @@
 
 class Roots_Bootstrap
 {
-    
-    
-    private $apcfile;
-    private $apckey;
+
+    protected $apckey;
     
     public function __construct($apcfolder) {
-        $path = __DIR__.DIRECTORY_SEPARATOR.$apcfolder.DIRECTORY_SEPARATOR;
-        if (!is_readable($path)) {
-            $path = __DIR__.DIRECTORY_SEPARATOR;
-        }
-        $this->apcfile = $path.'shrubroots.apc';
         $this->apckey = 'ShrubRoots';
         define('ROOTS_VERSION', '0.99');
         define('ROOTS_NAME', $this->apckey);
@@ -40,9 +33,7 @@ class Roots_Bootstrap
     public function cacheCheck() {
         $container = apc_fetch($this->apckey);
         if ($container === false) {
-            apc_bin_loadfile($this->apcfile) ?
-                $container = apc_fetch($this->apckey) :
-                $container = $this->bootstrapLoad();
+            $container = $this->bootstrapLoad();
         }
         
         return $container;
@@ -66,9 +57,6 @@ class Roots_Bootstrap
         $container->loadObjects();
         
         apc_store($this->apckey, $container);
-        if (apc_bin_dumpfile(null, $container, $this->apcfile) === false) {
-            throw new Exception("Error storing ShrubRoots via APC.");
-        }
         
         return $container;
     }

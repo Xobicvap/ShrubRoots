@@ -388,7 +388,7 @@ class Roots_ObjectBuilder implements Roots_IBuilding,
     public function toggleAutoload($toggle) {
         $on_off = array('on', 'off');
         if (is_string($toggle) && in_array($toggle, $on_off)) {
-            $autoload_func = array('Roots_Setup', 'rootsAutoload');
+            $autoload_func = array('Roots_ObjectBuilder', 'buildAutoload');
             $this->autoloadSwitch($autoload_func, $toggle);
         }
     }

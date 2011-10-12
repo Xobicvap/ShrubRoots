@@ -1,11 +1,11 @@
 All code contained herein save for spyc.php is (C) 2011 Rusty Hamilton (rusty@shrub3.net).
 
-ShrubRoots is a dependency injection container with a few interesting features that aren't necessarily found in other containers. It is currently in beta, i.e. all the unit tests pass with flying colors but it hasn't been field-tested yet by average users. That's where you come in. And I don't know if the Bootstrap object works yet because that one, sadly, I haven't tested. 
+ShrubRoots is a dependency injection container with a few interesting features that aren't necessarily found in other containers. It is currently in beta, i.e. all the unit tests pass with flying colors but it hasn't been field-tested yet by average users. That's where you come in. 
 
 A manual and a Doxygen-generated API reference are in the works, as is XML (and possibly JSON) support. For right now, here's an ultra-short tutorial of sorts:
 
 What ShrubRoots Does:
-If given a dependency mapping file, ShrubRoots will build everything in it then store it in an APC cache so it doesn't have to be built again for a while. In addition to the APC cache, your objects/variables/what have you are stored in a bytecode file as well. (If you're changing the code of your application regularly, you can turn off caching/bytecode storage.)
+If given a dependency mapping file, ShrubRoots will build everything in it then store those objects, along with a container object that holds them, in an APC cache so it doesn't have to be built again for a while. 
 
 What You Shouldn't (Or Can't) Use ShrubRoots For:
 Most frameworks have their own dependency injection solutions/containers etc. implemented internally, and you'd have to do a significant amount of mucking around in their internals to use ShrubRoots with them. Their solutions are most likely optimized for their needs, as well. Bottom line: ShrubRoots doesn't work well (or at all) with web application frameworks like Symfony, CodeIgniter, CakePHP, and so forth. For smaller projects, or even larger ones provided they don't do a lot of lazy loading etc., ShrubRoots works just fine.
@@ -15,7 +15,7 @@ ShrubRoots works ONLY for object-oriented code. If your code base is largely or 
 How ShrubRoots Works (i.e. the part you're really looking for):
 First, you need a dependency mapping file, then you need to create a classmap (don't worry, there's a tool for that) that will tell ShrubRoots where to find your source files. Next, you need to tell ShrubRoots where to find your classmap and dependency mapping files. Finally, in your application's bootstrap script, instantiate the Roots_Bootstrap object and run its cacheCheck method. The cacheCheck method will return the ShrubRoots container, from which you can get whatever objects you built earlier and/or request a factory object to make an object for you. We'll discuss all of these steps in detail below.
 
-Oh, and as you may have gathered from the above information at some point, you need to have APC installed as a PHP extension, if you don't have it already. See (info) for details on that.
+Oh, and as you may have gathered from the above information at some point, you need to have APC installed as a PHP extension, if you don't have it already. See http://www.php.net/manual/en/apc.installation.php for details on that.
 
 
 Step 1: Create a dependency mapping file.
@@ -31,7 +31,7 @@ The first type of dependency mapping ShrubRoots understands is the Variables typ
 
 ShrubRoots supports the int, string, and float primitive types, has support for arrays, and also handles several different types of files: text files (loaded into a string via file_get_contents), include files (in case you're building objects that use a custom bootstrap/class loader script), file handles (if you need low-level access), and parseable files. The latter we'll explain later.
 
-To set up a variable mapping, you do it in the manner described below. All variable types are exemplified:
+An example of all variable mapping types is shown below. You will notice that the very first line of the mapping contains a 'version' key. This is EXTREMELY important, as ShrubRoots has been instructed to not read any YAML files that do not have this as the first key.
 
 version: 1.001
 variables:
@@ -71,8 +71,6 @@ The 'parseable_file' type we mentioned above is a YAML file whose contents are p
 
 It should also be mentioned that Spyc is additionally wonderful in that you can indeed parse strings that contain double and single quotes without having to do any escaping magic. For instance, the 'quote' variable above could be listed as "i'm a string" and Spyc will include the quotes. See how magical Spyc is?
 
-We'll discuss the 'version' key listed above at a later point. Just remember that it's there, for now.
-
 Your application can retrieve any of these values at any point by using the container's retrieveItem($obj_name) method, where $obj_name equals the key of the variable you want.
 
 
@@ -94,6 +92,8 @@ And in a separate file (we'll show where this file goes, and how to find it, ver
 
 clone_list:
     Baf_array: Baf
+
+Please don't forget- the variables, objects and factories mappings must be contained as part of the same file! The clone list is separate!
     
 The mapping headed by the 'objects' key tells ShrubRoots how to build everything. We could read the mapping as "The Foo object's first constructor parameter is an instance of the Bar object, whose constructor parameter is the collection variable already specified in the variables mapping. The Foo object's next constructor parameter is the Baz object, whose constructor parameter is an array of two Baf objects." Hopefully this makes sense?
 
@@ -169,5 +169,9 @@ In your application's bootstrap script (make one if you don't have one), instant
 Call the container object's retrieveItem method, passing it the name of the object you want- most likely whatever the main object is for your application. Call that object's initial method, and you're set.
 
 The next time your bootstrap script loads, it will run the Roots_Bootstrap's cacheCheck method again- but in this case all it will do is pull your container (which of course contains your entire application) from the APC cache. No loading, no instantiating anything, just a straight transfer from the cache to your script. Easy stuff.
+
+You don't have to worry about your application sitting there in the cache with all sorts of sensitive user data contained within it. Whatever objects are built by ShrubRoots are stored only upon being built. In other words, after you retrieve your application from the container, a user could theoretically post their entire credit history to your site, and ShrubRoots is going to completely ignore it. ShrubRoots honestly has no mechanisms I know of for storing user data at all.
+
+What *you* do with user data, however, is up to you. ShrubRoots and its creator assume no responsibility for you storing user data in an APC cache. 
 
 As I stated earlier, a full tutorial and a Doxygen-generated API manual is in the works. For now, enjoy!
